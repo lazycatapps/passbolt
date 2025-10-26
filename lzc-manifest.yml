@@ -1,0 +1,189 @@
+# Passbolt - Open Source Password Manager for Teams
+# 团队密码管理器，提供端到端加密的安全凭证管理
+
+# Package Information
+package: cloud.lazycat.app.liu.passbolt
+version: 5.6.0
+
+name: Passbolt Password Manager
+license: https://github.com/passbolt/passbolt_api?tab=AGPL-3.0-1-ov-file#readme
+keywords: password-manager,security,encryption,team-collaboration,credential-management
+
+# Project Information
+homepage: https://github.com/passbolt/passbolt_api
+author: liu
+
+# Localization
+locales:
+  zh:
+    name: Passbolt 密码管理器
+    description: |
+      Passbolt 是一个开源的团队密码管理器，采用安全优先的设计理念，帮助组织集中化、组织化和安全地共享密码及敏感信息。
+
+      **核心特性：**
+      - **安全加密：** 端到端加密，用户拥有私钥，定期接受第三方安全审计
+      - **团队协作：** 支持安全的凭证共享，高级权限策略管理
+      - **隐私保护：** 欧盟托管（卢森堡），无遥测数据收集，支持离线部署
+      - **跨平台：** 浏览器扩展、移动应用、命令行工具等多端支持
+
+      **首次部署配置：**
+      部署成功后，需要通过 Docker 命令创建第一个管理员用户。请 SSH 登录到 Lazycat 服务器并执行：
+      ```
+      lzc-docker exec -it cloudlazycatappliupassbolt-passbolt-1 su -s /bin/bash -m www-data -c "/usr/share/php/passbolt/bin/cake passbolt register_user -u <YOUR_EMAIL> -f <FIRST_NAME> -l <LAST_NAME> -r admin"
+      ```
+      将 `<YOUR_EMAIL>`、`<FIRST_NAME>`、`<LAST_NAME>` 替换为实际值。执行成功后，系统会返回一个类似下面的设置链接：
+      ```
+      https://passbolt.{box-name}.heiyu.space/setup/install/1eafab88-a17d-4ad8-97af-77a97f5ff552/f097be64-3703-41e2-8ea2-d59cbe1c15bc
+      ```
+      在浏览器中打开该链接完成管理员账户注册流程。
+
+      **重要提示：**
+      如果在初始化管理员账户时遇到角色（role）信息为空的问题，这可能是 Passbolt 的已知 bug。解决方法：**完全卸载应用（选择删除数据）**，然后重新安装并重新初始化。只要确保初始化的管理员账户拥有正确的 role 信息，后续创建和邀请的所有用户都不会遇到此问题，请放心使用。
+
+      **官方网站：** https://www.passbolt.com
+      **仓库地址：** https://github.com/lazycatapps/passbolt.git
+      **快速入门：** https://github.com/lazycatapps/passbolt/blob/main/QUICKSTART.md
+
+  en:
+    name: Passbolt Password Manager
+    description: |
+      Passbolt is a security-first, open source password manager for teams that helps organizations centralize, organize and share passwords and secrets securely.
+
+      **Key Features:**
+      - **Security:** User-owned secret keys with end-to-end encryption and regular third-party security audits
+      - **Collaboration:** Secure credential sharing with advanced team management policies
+      - **Privacy:** EU-based (Luxembourg), no telemetry collection, air-gapped deployment capable
+      - **Cross-platform:** Browser extensions, mobile apps, CLI tools and more
+
+      **Initial Setup:**
+      After successful deployment, you need to create the first admin user via Docker command. SSH into your Lazycat server and run:
+      ```
+      lzc-docker exec -it cloudlazycatappliupassbolt-passbolt-1 su -s /bin/bash -m www-data -c "/usr/share/php/passbolt/bin/cake passbolt register_user -u <YOUR_EMAIL> -f <FIRST_NAME> -l <LAST_NAME> -r admin"
+      ```
+      Replace `<YOUR_EMAIL>`, `<FIRST_NAME>`, and `<LAST_NAME>` with actual values. Upon successful execution, you'll receive a setup URL similar to:
+      ```
+      https://passbolt.{box-name}.heiyu.space/setup/install/1eafab88-a17d-4ad8-97af-77a97f5ff552/f097be64-3703-41e2-8ea2-d59cbe1c15bc
+      ```
+      Open this URL in your browser to complete the admin account registration process.
+
+      **Important Note:**
+      If you encounter an issue where the admin role information is empty during initialization, this may be a known Passbolt bug. Solution: **completely uninstall the application (with data deletion)**, then reinstall and reinitialize. Once the admin account is initialized with the correct role information, all subsequently created and invited users will not encounter this issue. You can use it with confidence.
+
+      **Official Website:** https://www.passbolt.com
+      **Repository:** https://github.com/lazycatapps/passbolt.git
+      **Quick Start Guide:** https://github.com/lazycatapps/passbolt/blob/main/QUICKSTART.md
+
+# Application Configuration
+application:
+  # Subdomain for accessing the application
+  subdomain: passbolt
+
+  # Enable background task processing
+  background_task: true
+
+  # Disable multiple instances
+  multi_instance: false
+
+  # Route configuration: maps external paths to internal services
+  routes:
+    - /=http://passbolt:80
+
+  # Public paths that don't require authentication
+  public_path:
+    - /
+
+# Service Definitions
+services:
+  # MariaDB Database Service
+  db:
+    # lzc-cli appstore copy-image mariadb:10.11
+    image: registry.lazycat.cloud/liu/library/mariadb:8fea63c7df590530
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=passbolt
+      - MYSQL_USER=passbolt
+      - MYSQL_PASSWORD=P4ssb0lt
+    binds:
+      - /lzcapp/var/mysql:/var/lib/mysql
+    health_check:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -upassbolt
+        - -pP4ssb0lt
+
+  # Passbolt Application Service
+  passbolt:
+    # lzc-cli appstore copy-image passbolt/passbolt:5.6.0-1-ce
+    image: registry.lazycat.cloud/liu/passbolt/passbolt:02567305ae024291
+    environment:
+      - APP_FULL_BASE_URL=https://${LAZYCAT_APP_DOMAIN}
+      - DATASOURCES_DEFAULT_HOST=db
+      - DATASOURCES_DEFAULT_USERNAME=passbolt
+      - DATASOURCES_DEFAULT_PASSWORD=P4ssb0lt
+      - DATASOURCES_DEFAULT_DATABASE=passbolt
+      - EMAIL_DEFAULT_FROM=
+      - EMAIL_TRANSPORT_DEFAULT_HOST=
+      - EMAIL_TRANSPORT_DEFAULT_PORT=
+      - EMAIL_TRANSPORT_DEFAULT_USERNAME=
+      - EMAIL_TRANSPORT_DEFAULT_PASSWORD=
+      - EMAIL_TRANSPORT_DEFAULT_TLS=
+      # 发现不禁止此设置，会出现初始化失败的问题，完全不可用。
+      # 先解决能用的问题，后面再解决好用的问题
+      - PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED=false
+    setup_script: |
+      set -e
+
+      # Step 1: Set up directory permissions
+      echo "Setting up directory permissions..."
+      chown -R www-data:www-data /etc/passbolt/gpg /var/lib/passbolt/.gnupg
+      chown -R root:www-data /etc/passbolt/jwt
+      chmod 700 /var/lib/passbolt/.gnupg
+
+      # Step 2: Start Passbolt service in background
+      echo "Starting Passbolt service..."
+      /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh &
+      ENTRYPOINT_PID=$!
+
+      # Step 3: Wait for Passbolt to initialize and run post-initialization tasks
+      echo "Waiting for Passbolt initialization..."
+      for i in {1..120}; do
+        if [ -f /etc/environment ]; then
+          echo "Passbolt initialized, running post-initialization tasks..."
+          sleep 15
+
+          # Initialize Passbolt keyring
+          echo "Initializing Passbolt keyring..."
+          su -s /bin/bash -m www-data -c "/usr/share/php/passbolt/bin/cake passbolt keyring_init"
+
+          # Run database migrations to ensure all required tables exist
+          echo "Running database migrations..."
+          mkdir -p /usr/share/php/passbolt/plugins/PassboltCe/config/Migrations
+          chown -R www-data:www-data /usr/share/php/passbolt/plugins/PassboltCe/config
+          /usr/share/php/passbolt/bin/cake migrations migrate --plugin PassboltCe || true
+
+          echo "Post-initialization tasks completed."
+          break
+        fi
+        sleep 5
+      done
+
+      # Step 4: Wait for the entrypoint process to complete
+      echo "Waiting for Passbolt service to start..."
+      wait $ENTRYPOINT_PID
+    depends_on:
+      - db
+    binds:
+      - /lzcapp/var/gpg:/etc/passbolt/gpg
+      - /lzcapp/var/jwt:/etc/passbolt/jwt
+      - /lzcapp/var/gnupg:/var/lib/passbolt/.gnupg
+    health_check:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:80
+      start_period: 60s
