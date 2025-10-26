@@ -13,6 +13,14 @@ keywords: password-manager,security,encryption,team-collaboration,credential-man
 homepage: https://github.com/passbolt/passbolt_api
 author: liu
 
+usage: |                                  # 使用须知 (首次访问时渲染,支持多行)
+  提示:
+    * 首次安装时初始化过程可能较慢，请耐心等待。
+    * LC02 机型因性能限制，可能因数据库启动过慢导致首次安装失败，需重试一次。
+    * LC03 机型暂未遇到初始化失败问题。
+    * 万一初始化失败，请重试几次。
+    * 一旦初始化完成，后续重启会很快，请放心使用。
+
 # Localization
 locales:
   zh:
@@ -106,6 +114,7 @@ services:
     binds:
       - /lzcapp/var/mysql:/var/lib/mysql
     health_check:
+      start_period: 120s
       test:
         - CMD
         - mysqladmin
@@ -135,6 +144,7 @@ services:
       # 先解决能用的问题，后面再解决好用的问题
       - PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED=false
     setup_script: |
+      #!/bin/bash
       set -e
 
       # Step 1: Set up directory permissions
@@ -149,11 +159,11 @@ services:
       ENTRYPOINT_PID=$!
 
       # Step 3: Wait for Passbolt to initialize and run post-initialization tasks
-      echo "Waiting for Passbolt initialization..."
-      for i in {1..120}; do
-        if [ -f /etc/environment ]; then
-          echo "Passbolt initialized, running post-initialization tasks..."
-          sleep 15
+      echo "Waiting for Passbolt service to be ready..."
+      for i in $(seq 1 120); do
+        if [ -f /etc/environment ] && curl -s http://localhost:80/healthcheck/status.json 2>/dev/null | grep -q "OK"; then
+          echo "Passbolt service is ready, running post-initialization tasks..."
+          sleep 5
 
           # Initialize Passbolt keyring
           echo "Initializing Passbolt keyring..."
@@ -167,6 +177,8 @@ services:
 
           echo "Post-initialization tasks completed."
           break
+        else
+          echo "Passbolt service not ready yet, retrying... ($i/120)"
         fi
         sleep 5
       done
@@ -185,5 +197,5 @@ services:
         - CMD
         - curl
         - -f
-        - http://localhost:80
-      start_period: 60s
+        - http://localhost
+      start_period: 240s
